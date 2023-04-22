@@ -1,9 +1,25 @@
 import os
-import random
+import psutil
 import re
 
 def get_desktop_path():
     return os.path.join(os.path.expanduser("~"), "Desktop")
+
+
+def parse_unit(raw_string):
+    unit = ""
+    for char in raw_string:
+        if char.isalpha():
+            unit += char
+    return unit.lower()
+
+
+def parse_value(raw_string):
+    result = 0
+    for char in raw_string:
+        if char.isdigit():
+            result = result * 10 + int(char)
+    return result
 
 
 def convert_size_to_bytes(size_str):
@@ -18,10 +34,17 @@ def convert_size_to_bytes(size_str):
         "gb": 1073741824,
         "tb": 1099511627776
     }
-    for unit, value in size_units.items():
-        if size_str[len(size_str) - 2:len(size_str)] == unit:
-            size_num = float(size_str[:len(size_str) - 2])
-            return int(size_num * value)
+    
+    unit = parse_unit(size_str)
+    
+    if unit not in size_units:
+        abort(f"'{unit}' is not a valid size modifier! (b, kb, mb, gb, or tb)")
+    
+    size_value = parse_value(size_str)
+    
+    for key, value in size_units.items():
+        if unit == key:
+            return int(size_value * value)
     return None
 
 
@@ -56,30 +79,41 @@ def write_file(path, size):
             f.write(block)
 
 
+def check_memory(size):
+    print("Checking memory...")
+    available = psutil.disk_usage('/').free
+    if size > available:
+        abort("There isn't enough memory on this system!")
+    print("Memory -> ok!")
+        
+
+def abort(message="Aborted!"):
+    print(message)
+    exit()
+
+
 def main():
     location = get_desktop_path()
     
     if not os.path.isdir(location):
-        print("Failed to detect the desktop!")
-        exit()
+        abort("Failed to dected the desktop!")
 
     file_name = input("Please enter a name for the file: ")
     if not is_valid_name(file_name):
-        print("This name is invalid! (Check the windows file name specifications)")
-        exit()
+        abort("This name is invalid! (Check the windows file name specifications)")
     
     full_path = os.path.join(location, file_name)
     
     if os.path.exists(full_path):
         confirm = input(f"The file '{full_path}' already exists. Do you want to overwrite it? (y/n): ")
         if confirm.lower() != "y":
-            print("Aborted!")
-            exit()
+            abort()
     
     size = convert_size_to_bytes(input("Enter the file size: "))
     if input(f"Are you sure you want to create a file with {format_number(size)} bytes? (y/n): ").lower() != 'y':
-        print("Aborted!")
-        exit()
+        abort()
+    
+    check_memory(size)
     
     print("Writing....")
     write_file(full_path, size)
