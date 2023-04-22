@@ -12,3 +12,6 @@ for example:
   Available suffixes are: b, kb, mb, gb, and tb.
 Enter "y" to confirm and wait for it to generate your file.
 After that you should be finished!
+
+Dependacies:
+  -psutil | pip install psutil
